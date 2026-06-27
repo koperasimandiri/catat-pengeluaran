@@ -433,7 +433,7 @@
             }
         }
 
-        // FUNGSI UTAMA: MENGAMBIL DATA LANGSUNG DARI GOOGLE SHEETS (doGet)
+        // FUNGSI UTAMA: MENGAMBIL DATA LANGSUNG DARI GOOGLE SHEETS (DENGAN RE-TRY OTOMATIS / EXPONENTIAL BACKOFF)
         async function fetchFromGoogleSheets() {
             const scriptUrl = getActiveScriptUrl();
             if (!scriptUrl) return;
@@ -441,30 +441,50 @@
             const refreshBtnIcon = document.getElementById('btnRefreshIcon');
             if (refreshBtnIcon) refreshBtnIcon.classList.add('animate-spin');
 
-            try {
-                // Gunakan fetch ke Google Web App URL (doGet)
-                // Catatan: Google Apps Script Web App mengembalikan redirect, browser akan mengikutinya secara otomatis.
-                const response = await fetch(scriptUrl);
-                
-                if (!response.ok) {
-                    throw new Error("Respon jaringan server Google Apps Script tidak berhasil.");
-                }
+            const maxRetries = 3;
+            let attempt = 0;
+            let success = false;
 
-                const data = await response.json();
-                
-                if (data && Array.isArray(data)) {
-                    // Update state lokal kita dengan data live terbaru dari Sheets
-                    transactions = data;
-                    saveToLocalStorage(); // Update cache lokal untuk akses offline lebih cepat berikutnya
-                    updateUI();
-                    showToast('success', 'Data Diperbarui', `Berhasil menarik ${data.length} baris data langsung dari Google Sheets!`);
+            while (attempt < maxRetries && !success) {
+                try {
+                    // Timeout controller 8 detik
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                    const response = await fetch(scriptUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        throw new Error("HTTP " + response.status);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data && Array.isArray(data)) {
+                        transactions = data;
+                        saveToLocalStorage();
+                        updateUI();
+                        showToast('success', 'Data Diperbarui', `Berhasil menarik ${data.length} baris data langsung dari Google Sheets!`);
+                        success = true;
+                    } else if (data && data.error) {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    attempt++;
+                    console.warn(`Gagal menarik data (Percobaan ${attempt}/${maxRetries}): ${error.message}`);
+                    
+                    if (attempt < maxRetries) {
+                        // Jeda waktu sebelum mencoba kembali (exponential backoff: 1s, 2s)
+                        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+                    }
                 }
-            } catch (error) {
-                console.error('Gagal mengambil data dari Google Sheets:', error);
-                showToast('error', 'Koneksi Offline', 'Tidak dapat mengambil data terbaru dari Google Sheets. Menampilkan riwayat cadangan lokal.');
-            } finally {
-                if (refreshBtnIcon) refreshBtnIcon.classList.remove('animate-spin');
             }
+
+            if (!success) {
+                showToast('error', 'Koneksi Offline', 'Tidak dapat mengambil data terbaru dari Google Sheets. Menampilkan riwayat cadangan lokal.');
+            }
+
+            if (refreshBtnIcon) refreshBtnIcon.classList.remove('animate-spin');
         }
 
         // Form Submit Handler (doPost)
