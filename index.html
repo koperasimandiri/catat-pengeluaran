@@ -73,10 +73,14 @@
                 </div>
             </div>
 
-            <!-- Sinkronisasi Status Badge -->
-            <div class="flex items-center gap-3">
+            <!-- Sinkronisasi Status Badge & Kontrol -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="fetchFromGoogleSheets()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/10 active:scale-95">
+                    <i id="btnRefreshIcon" class="fa-solid fa-arrows-rotate"></i>
+                    <span>Tarik Data Terbaru</span>
+                </button>
                 <button onclick="openSetupModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all border border-slate-700/80 flex items-center gap-2">
-                    <i class="fa-solid fa-gear text-emerald-400"></i>
+                    <i class="fa-solid fa-circle-info text-emerald-400"></i>
                     <span>Panduan & Info</span>
                 </button>
                 <div class="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-xs">
@@ -216,9 +220,9 @@
                         <div>
                             <h3 class="text-base font-bold text-white flex items-center gap-2">
                                 <i class="fa-solid fa-list text-emerald-400"></i>
-                                Riwayat Log Keuangan
+                                Riwayat Log Keuangan (Live Google Sheets)
                             </h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Semua pengeluaran yang tercatat di sesi & lokal Anda</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Menampilkan seluruh data langsung dari server Google Sheets Anda</p>
                         </div>
                         <div class="flex items-center gap-2 self-end sm:self-auto">
                             <!-- Ekspor CSV -->
@@ -227,7 +231,7 @@
                             </button>
                             <!-- Clear Database -->
                             <button onclick="clearAllData()" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-[11px] font-bold text-rose-400 transition-all">
-                                Kosongkan
+                                Kosongkan Lokal
                             </button>
                         </div>
                     </div>
@@ -247,8 +251,8 @@
                                 <tr id="noDataRow">
                                     <td colspan="4" class="py-12 text-center text-slate-500 italic">
                                         <div class="flex flex-col items-center justify-center gap-2">
-                                            <i class="fa-solid fa-folder-open text-3xl text-slate-700"></i>
-                                            <span>Belum ada data pengeluaran tersimpan</span>
+                                            <i class="fa-solid fa-folder-open text-3xl text-slate-700 animate-pulse"></i>
+                                            <span>Mencoba memuat data dari Google Sheets...</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -289,6 +293,17 @@
                         <p class="text-slate-300 leading-relaxed mb-2">Web app Anda telah ditanamkan alamat Google Apps Script langsung di dalam kodenya. Setiap transaksi yang Anda kirim akan otomatis di-sinkronisasikan ke lembar kerja (*sheet*) Anda.</p>
                         <p class="text-emerald-400 font-mono break-all font-semibold select-all">https://script.google.com/macros/s/AKfycby08klA3yZ6rRWeIipw9_f_E8YoYVZ6bMTg-uywqXJ7huwYz_MK_m5LzvziFos0qxKomg/exec</p>
                     </div>
+                </div>
+
+                <!-- Info Apps Script Update Penting -->
+                <div class="bg-slate-800/60 p-5 rounded-2xl border border-slate-700/40 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                        <h4 class="text-xs font-bold text-white uppercase tracking-wider">PENTING: Gunakan Kode Google Apps Script Terbaru</h4>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Agar tampilan web dapat menarik data langsung dari spreadsheet (sinkronisasi timbal balik), pastikan kode proyek Google Apps Script Anda telah mengimplementasikan fungsi <code class="text-emerald-400">doGet()</code>. Silakan salin kembali kode terbaru yang mendukung fungsi baca-tulis ini di chat jika belum memperbaruinya.
+                    </p>
                 </div>
 
                 <!-- Bagian Penggantian Endpoint Cadangan -->
@@ -347,7 +362,7 @@
                 budgetLimit = parseFloat(savedBudget);
             }
 
-            // Load Riwayat Transaksi dari localStorage
+            // Muat data lokal terlebih dahulu untuk menghindari kedipan loading kosong
             const savedTransactions = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (savedTransactions) {
                 transactions = JSON.parse(savedTransactions);
@@ -355,6 +370,9 @@
 
             updateUI();
             updateSyncIndicator();
+
+            // Tarik data asli langsung dari Google Sheets
+            fetchFromGoogleSheets();
         });
 
         // Event listener jika user memasukkan custom URL cadangan
@@ -373,7 +391,6 @@
         const jumlahInputHidden = document.getElementById('jumlah');
 
         jumlahInputVisual.addEventListener('input', (e) => {
-            // Hapus karakter non-digit
             let value = e.target.value.replace(/\D/g, '');
             
             if (value === "") {
@@ -382,10 +399,7 @@
                 return;
             }
 
-            // Set nilai ke hidden input (angka murni)
             jumlahInputHidden.value = value;
-
-            // Format tampilan visual dengan separator ribuan titik
             jumlahInputVisual.value = formatRupiahNumber(value);
         });
 
@@ -410,7 +424,6 @@
                 syncPulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
                 syncDot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
                 
-                // Beri teks berbeda jika mendeteksi kustomisasi endpoint
                 if (activeUrl !== DEFAULT_SCRIPT_URL) {
                     syncText.textContent = "Custom Sheets Aktif";
                 } else {
@@ -420,7 +433,41 @@
             }
         }
 
-        // Form Submit Handler
+        // FUNGSI UTAMA: MENGAMBIL DATA LANGSUNG DARI GOOGLE SHEETS (doGet)
+        async function fetchFromGoogleSheets() {
+            const scriptUrl = getActiveScriptUrl();
+            if (!scriptUrl) return;
+
+            const refreshBtnIcon = document.getElementById('btnRefreshIcon');
+            if (refreshBtnIcon) refreshBtnIcon.classList.add('animate-spin');
+
+            try {
+                // Gunakan fetch ke Google Web App URL (doGet)
+                // Catatan: Google Apps Script Web App mengembalikan redirect, browser akan mengikutinya secara otomatis.
+                const response = await fetch(scriptUrl);
+                
+                if (!response.ok) {
+                    throw new Error("Respon jaringan server Google Apps Script tidak berhasil.");
+                }
+
+                const data = await response.json();
+                
+                if (data && Array.isArray(data)) {
+                    // Update state lokal kita dengan data live terbaru dari Sheets
+                    transactions = data;
+                    saveToLocalStorage(); // Update cache lokal untuk akses offline lebih cepat berikutnya
+                    updateUI();
+                    showToast('success', 'Data Diperbarui', `Berhasil menarik ${data.length} baris data langsung dari Google Sheets!`);
+                }
+            } catch (error) {
+                console.error('Gagal mengambil data dari Google Sheets:', error);
+                showToast('error', 'Koneksi Offline', 'Tidak dapat mengambil data terbaru dari Google Sheets. Menampilkan riwayat cadangan lokal.');
+            } finally {
+                if (refreshBtnIcon) refreshBtnIcon.classList.remove('animate-spin');
+            }
+        }
+
+        // Form Submit Handler (doPost)
         const expenseForm = document.getElementById('expenseForm');
         const submitBtn = document.getElementById('submitBtn');
 
@@ -440,14 +487,13 @@
             setLoadingState(true);
             hideToast();
 
-            // Jalankan pengiriman data asli ke endpoint tersemat
             try {
                 const formData = new URLSearchParams();
                 formData.append('tanggal', tanggal);
                 formData.append('uraian', uraian);
                 formData.append('jumlah', jumlah);
 
-                // Gunakan mode no-cors untuk melewati hambatan CORS browser lokal ketika memposting ke Google
+                // Kirim POST ke Apps Script
                 await fetch(scriptUrl, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -457,7 +503,7 @@
                     body: formData.toString()
                 });
 
-                // Masukkan ke log transaksi sukses
+                // Tambahkan data ke list teratas di UI secara instan (optimistic UI)
                 const newTransaction = {
                     id: 'sync-' + Date.now(),
                     tanggal,
@@ -470,12 +516,17 @@
                 saveToLocalStorage();
                 updateUI();
 
-                showToast('success', 'Berhasil Dikirim!', 'Pengeluaran Anda berhasil dicatat dan disinkronkan ke Google Sheets!');
+                showToast('success', 'Berhasil Dikirim!', 'Pengeluaran Anda berhasil dicatat ke Google Sheets!');
                 resetForm();
+
+                // Picu pengambilan ulang data agar tabel benar-benar sinkron dengan urutan aslinya
+                setTimeout(() => {
+                    fetchFromGoogleSheets();
+                }, 1500);
 
             } catch (error) {
                 console.error('Error pengiriman:', error);
-                showToast('error', 'Gagal Sinkronisasi', 'Terjadi gangguan jaringan saat menghubungi Google Sheets: ' + error.message);
+                showToast('error', 'Gagal Sinkronisasi', 'Gagal mengirim data. Dicatat sementara di memori lokal browser.');
             } finally {
                 setLoadingState(false);
             }
@@ -509,14 +560,13 @@
             const historyBody = document.getElementById('historyBody');
             const noDataRow = document.getElementById('noDataRow');
             
-            // Bersihkan baris tabel selain baris no-data
             historyBody.innerHTML = '';
 
             if (transactions.length === 0) {
                 historyBody.appendChild(noDataRow);
                 noDataRow.style.display = 'table-row';
                 
-                // Reset angka statistik ke nol
+                // Reset statistik
                 document.getElementById('statTotal').textContent = 'Rp 0';
                 document.getElementById('statCount').textContent = '0 transaksi terdaftar';
                 document.getElementById('statMax').textContent = 'Rp 0';
@@ -533,7 +583,6 @@
             let maxAmt = 0;
             let maxLabel = '-';
 
-            // Loop dan render baris pengeluaran
             transactions.forEach(t => {
                 total += t.jumlah;
                 if (t.jumlah > maxAmt) {
@@ -541,17 +590,14 @@
                     maxLabel = t.uraian;
                 }
 
-                // Format Tanggal Indonesia
                 const formattedDate = new Date(t.tanggal).toLocaleDateString('id-ID', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric'
                 });
 
-                // Format Jumlah Rupiah
                 const formattedAmt = 'Rp ' + t.jumlah.toLocaleString('id-ID');
 
-                // Badge status sync
                 const isSynced = t.status === 'Disinkronkan';
                 const badgeClass = isSynced 
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
@@ -585,7 +631,6 @@
             const average = total / transactions.length;
             document.getElementById('statAvg').textContent = 'Rp ' + Math.round(average).toLocaleString('id-ID');
 
-            // Hitung persentase budget terpakai
             const budgetPercentVal = Math.min(Math.round((total / budgetLimit) * 100), 100);
             const budgetPercent = document.getElementById('budgetPercent');
             const budgetProgress = document.getElementById('budgetProgress');
@@ -593,7 +638,6 @@
             budgetPercent.textContent = `Terpakai ${budgetPercentVal}%`;
             budgetProgress.style.width = `${budgetPercentVal}%`;
 
-            // Ubah warna progress bar jika mendekati limit
             if (budgetPercentVal >= 90) {
                 budgetProgress.className = "bg-rose-500 h-full rounded-full transition-all duration-500";
                 budgetPercent.className = "text-rose-400";
@@ -627,11 +671,11 @@
 
         // Kosongkan Semua Data Riwayat Sesi
         function clearAllData() {
-            if (confirm("Apakah Anda yakin ingin menghapus semua riwayat pengisian lokal ini? Data yang terkirim ke Google Sheets asli tidak akan terhapus.")) {
+            if (confirm("Apakah Anda yakin ingin menghapus cache data lokal browser? (Langkah ini tidak menghapus data asli di Google Sheets Anda)")) {
                 transactions = [];
                 localStorage.removeItem(LOCAL_STORAGE_KEY);
                 updateUI();
-                showToast('success', 'Data Dikosongkan', 'Seluruh riwayat transaksi lokal berhasil dibersihkan.');
+                showToast('success', 'Data Lokal Dikosongkan', 'Riwayat lokal berhasil dibersihkan.');
             }
         }
 
@@ -646,14 +690,14 @@
             csvContent += "Tanggal,Uraian,Jumlah,Status\n";
 
             transactions.forEach(t => {
-                const cleanUraian = t.uraian.replace(/,/g, " "); // hilangkan tanda koma agar csv tidak rusak
+                const cleanUraian = t.uraian.replace(/,/g, " ");
                 csvContent += `${t.tanggal},${cleanUraian},${t.jumlah},${t.status}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `CatatKas-Ekspor-${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute("download", `CatatPengeluaran-Ekspor-${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -682,7 +726,6 @@
             toastMsg.textContent = message;
             toast.classList.remove('hidden');
 
-            // Auto-hide dalam 6 detik
             setTimeout(() => {
                 hideToast();
             }, 6000);
