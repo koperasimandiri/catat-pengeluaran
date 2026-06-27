@@ -94,39 +94,15 @@
         </header>
 
         <!-- DASHBOARD WIDGETS -->
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-            <!-- Card 1: Total Pengeluaran -->
-            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
-                <div class="absolute right-4 top-4 text-emerald-500/10 text-4xl"><i class="fa-solid fa-coins"></i></div>
-                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Pengeluaran</p>
-                <h3 id="statTotal" class="text-2xl sm:text-3xl font-extrabold text-white mt-2 tracking-tight">Rp 0</h3>
-                <p id="statCount" class="text-slate-500 text-xs mt-1">0 transaksi terdaftar</p>
-            </div>
-
-            <!-- Card 2: Pengeluaran Terbesar -->
-            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
-                <div class="absolute right-4 top-4 text-indigo-500/10 text-4xl"><i class="fa-solid fa-arrow-up-right-dots"></i></div>
-                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Transaksi Terbesar</p>
-                <h3 id="statMax" class="text-2xl sm:text-3xl font-extrabold text-indigo-400 mt-2 tracking-tight">Rp 0</h3>
-                <p id="statMaxLabel" class="text-slate-500 text-xs mt-1 truncate">-</p>
-            </div>
-
-            <!-- Card 3: Rata-Rata Pengeluaran -->
-            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
-                <div class="absolute right-4 top-4 text-violet-500/10 text-4xl"><i class="fa-solid fa-chart-line"></i></div>
-                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Rata-rata Transaksi</p>
-                <h3 id="statAvg" class="text-2xl sm:text-3xl font-extrabold text-violet-400 mt-2 tracking-tight">Rp 0</h3>
-                <p class="text-slate-500 text-xs mt-1">Berdasarkan data tersimpan</p>
-            </div>
-
-            <!-- Card 4: Limit & Anggaran Bulanan -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+            <!-- Card 1: Total Pemasukkan -->
             <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Batas Anggaran</p>
-                        <h3 id="statBudgetLeft" class="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-1">Rp 5.000.000</h3>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Pemasukkan</p>
+                        <h3 id="statIncome" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-2 tracking-tight">Rp 5.000.000</h3>
                     </div>
-                    <button onclick="adjustBudget()" class="text-[10px] text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition-colors">Atur</button>
+                    <button onclick="adjustIncome()" class="text-[10px] text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition-colors">Atur</button>
                 </div>
                 <!-- Progress Bar -->
                 <div class="w-full bg-slate-700/50 h-2 rounded-full mt-3 overflow-hidden">
@@ -134,8 +110,24 @@
                 </div>
                 <div class="flex justify-between items-center text-[10px] text-slate-500 mt-1.5">
                     <span id="budgetPercent">Terpakai 0%</span>
-                    <span>Limit: Rp 5.000.000</span>
+                    <span>Pemasukkan Terdaftar</span>
                 </div>
+            </div>
+
+            <!-- Card 2: Total Pengeluaran -->
+            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+                <div class="absolute right-4 top-4 text-emerald-500/10 text-4xl"><i class="fa-solid fa-coins"></i></div>
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Pengeluaran</p>
+                <h3 id="statTotal" class="text-2xl sm:text-3xl font-extrabold text-white mt-2 tracking-tight">Rp 0</h3>
+                <p id="statCount" class="text-slate-500 text-xs mt-1">0 transaksi terdaftar</p>
+            </div>
+
+            <!-- Card 3: Saldo Cash -->
+            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+                <div class="absolute right-4 top-4 text-indigo-500/10 text-4xl"><i class="fa-solid fa-wallet"></i></div>
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Saldo cash</p>
+                <h3 id="statCash" class="text-2xl sm:text-3xl font-extrabold text-indigo-400 mt-2 tracking-tight">Rp 0</h3>
+                <p id="statCashLabel" class="text-slate-500 text-xs mt-1 truncate">-</p>
             </div>
         </section>
 
@@ -342,7 +334,7 @@
         const BUDGET_LIMIT_KEY = 'catatkas_budget_limit';
 
         let transactions = [];
-        let budgetLimit = 5000000; // Default budget limit 5 juta rupiah
+        let budgetLimit = 5000000; // Default budget limit (Sekarang bertindak sebagai Total Pemasukkan)
 
         // On Load Page
         document.addEventListener('DOMContentLoaded', () => {
@@ -589,9 +581,10 @@
                 // Reset statistik
                 document.getElementById('statTotal').textContent = 'Rp 0';
                 document.getElementById('statCount').textContent = '0 transaksi terdaftar';
-                document.getElementById('statMax').textContent = 'Rp 0';
-                document.getElementById('statMaxLabel').textContent = '-';
-                document.getElementById('statAvg').textContent = 'Rp 0';
+                document.getElementById('statIncome').textContent = 'Rp ' + budgetLimit.toLocaleString('id-ID');
+                document.getElementById('statCash').textContent = 'Rp ' + budgetLimit.toLocaleString('id-ID');
+                document.getElementById('statCashLabel').textContent = 'Dana Koperasi aman';
+                document.getElementById('statCashLabel').className = "text-slate-500 text-xs mt-1";
                 document.getElementById('budgetPercent').textContent = 'Terpakai 0%';
                 document.getElementById('budgetProgress').style.width = '0%';
                 return;
@@ -599,16 +592,10 @@
 
             noDataRow.style.display = 'none';
 
-            let total = 0;
-            let maxAmt = 0;
-            let maxLabel = '-';
+            let totalExpenses = 0;
 
             transactions.forEach(t => {
-                total += t.jumlah;
-                if (t.jumlah > maxAmt) {
-                    maxAmt = t.jumlah;
-                    maxLabel = t.uraian;
-                }
+                totalExpenses += t.jumlah;
 
                 const formattedDate = new Date(t.tanggal).toLocaleDateString('id-ID', {
                     year: 'numeric',
@@ -642,16 +629,34 @@
                 historyBody.appendChild(row);
             });
 
-            // Update Widget Statistik
-            document.getElementById('statTotal').textContent = 'Rp ' + total.toLocaleString('id-ID');
+            // Update Total Pengeluaran
+            document.getElementById('statTotal').textContent = 'Rp ' + totalExpenses.toLocaleString('id-ID');
             document.getElementById('statCount').textContent = `${transactions.length} transaksi terdaftar`;
-            document.getElementById('statMax').textContent = 'Rp ' + maxAmt.toLocaleString('id-ID');
-            document.getElementById('statMaxLabel').textContent = maxLabel;
-            
-            const average = total / transactions.length;
-            document.getElementById('statAvg').textContent = 'Rp ' + Math.round(average).toLocaleString('id-ID');
 
-            const budgetPercentVal = Math.min(Math.round((total / budgetLimit) * 100), 100);
+            // Hitung & Update Saldo cash (Total Pemasukkan - Total Pengeluaran)
+            const saldoCash = budgetLimit - totalExpenses;
+            const statCash = document.getElementById('statCash');
+            const statCashLabel = document.getElementById('statCashLabel');
+            
+            statCash.textContent = 'Rp ' + saldoCash.toLocaleString('id-ID');
+            
+            if (saldoCash < 0) {
+                // Berubah warna merah jika defisit
+                statCash.className = "text-2xl sm:text-3xl font-extrabold text-rose-400 mt-2 tracking-tight";
+                statCashLabel.textContent = "Defisit anggaran!";
+                statCashLabel.className = "text-rose-500 text-xs mt-1 font-semibold";
+            } else {
+                // Tetap indigo jika aman
+                statCash.className = "text-2xl sm:text-3xl font-extrabold text-indigo-400 mt-2 tracking-tight";
+                statCashLabel.textContent = "Dana Koperasi aman";
+                statCashLabel.className = "text-slate-500 text-xs mt-1";
+            }
+
+            // Update Total Pemasukkan
+            document.getElementById('statIncome').textContent = 'Rp ' + budgetLimit.toLocaleString('id-ID');
+
+            // Hitung persentase penggunaan budget dari pemasukkan
+            const budgetPercentVal = Math.min(Math.round((totalExpenses / budgetLimit) * 100), 100);
             const budgetPercent = document.getElementById('budgetPercent');
             const budgetProgress = document.getElementById('budgetProgress');
             
@@ -668,8 +673,6 @@
                 budgetProgress.className = "bg-emerald-500 h-full rounded-full transition-all duration-500";
                 budgetPercent.className = "text-slate-400";
             }
-
-            document.getElementById('statBudgetLeft').textContent = 'Rp ' + budgetLimit.toLocaleString('id-ID');
         }
 
         // Simpan Data ke LocalStorage
@@ -677,15 +680,15 @@
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(transactions));
         }
 
-        // Atur Nilai Budget Limit Mandiri
-        function adjustBudget() {
+        // Atur Nilai Total Pemasukkan Mandiri
+        function adjustIncome() {
             const currentBudgetVal = budgetLimit;
-            const userVal = prompt("Masukkan Batas Anggaran Bulanan Baru (Angka Saja):", currentBudgetVal);
+            const userVal = prompt("Masukkan Total Pemasukkan Baru (Angka Saja):", currentBudgetVal);
             if (userVal !== null && !isNaN(userVal) && parseFloat(userVal) > 0) {
                 budgetLimit = parseFloat(userVal);
                 localStorage.setItem(BUDGET_LIMIT_KEY, budgetLimit);
                 updateUI();
-                showToast('success', 'Batas Anggaran Diperbarui', `Batas anggaran bulanan Anda disetel menjadi Rp ${budgetLimit.toLocaleString('id-ID')}`);
+                showToast('success', 'Pemasukkan Diperbarui', `Total pemasukkan koperasi Anda disetel menjadi Rp ${budgetLimit.toLocaleString('id-ID')}`);
             }
         }
 
@@ -751,6 +754,7 @@
             }, 6000);
         }
 
+        // Menyembunyikan toast
         function hideToast() {
             document.getElementById('statusToast').classList.add('hidden');
         }
